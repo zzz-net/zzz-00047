@@ -1,4 +1,17 @@
 import type { Database } from '../types/index.js'
+import fs from 'fs'
+import path from 'path'
+
+export const SAMPLE_EVIDENCE_FILENAME = 'sample_anomaly_001.png'
+const PNG_1X1_BLUE_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z/C/HgAGgwJ/lK3Q6wAAAABJRU5ErkJggg=='
+
+export function createSampleEvidenceFiles(evidenceDir: string): void {
+  const filePath = path.join(evidenceDir, SAMPLE_EVIDENCE_FILENAME)
+  if (!fs.existsSync(filePath)) {
+    const buffer = Buffer.from(PNG_1X1_BLUE_BASE64, 'base64')
+    fs.writeFileSync(filePath, buffer)
+  }
+}
 
 export function getInitialData(): Database {
   const now = new Date().toISOString()
@@ -224,6 +237,15 @@ export function getInitialData(): Database {
             timestamp: new Date(Date.now() - 80000000).toISOString(),
           },
           {
+            id: 'LOG_002b',
+            inspectionOrderId: 'ORD_SAMPLE_001',
+            action: 'REVIEW',
+            fromStatus: 'COMPLETED',
+            toStatus: 'REVIEWED',
+            operator: '李主管',
+            timestamp: new Date(Date.now() - 50000000).toISOString(),
+          },
+          {
             id: 'LOG_003',
             inspectionOrderId: 'ORD_SAMPLE_001',
             action: 'CLOSE',
@@ -273,7 +295,7 @@ export function getInitialData(): Database {
             checkItemId: 'CI_002',
             description: '润滑油位低于最低刻度线约2cm，暂未发现渗漏点',
             severity: 'MEDIUM',
-            evidencePaths: [],
+            evidencePaths: [`/api/evidence/${SAMPLE_EVIDENCE_FILENAME}`],
             reportedBy: '王工',
             reportedAt: new Date(Date.now() - 500000).toISOString(),
           },

@@ -289,8 +289,6 @@ export function undoLastStep(orderId: string, operator: string): InspectionOrder
     throw new BusinessError(ERROR_CODES.INVALID_OPERATION, '撤销失败：无法回退到空状态。')
   }
 
-  validateStatusTransition(fromStatus, toStatus)
-
   order.status = toStatus
   if (toStatus === 'DRAFT') {
     order.submittedAt = undefined

@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import type { Database, Device, Shift, CheckItem, InspectionPlan, InspectionOrder } from '../types/index.js'
-import { getInitialData } from './seed.js'
+import { getInitialData, createSampleEvidenceFiles, SAMPLE_EVIDENCE_FILENAME } from './seed.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -22,19 +22,60 @@ function ensureDirs() {
 
 function loadDatabase(): Database {
   ensureDirs()
+  createSampleEvidenceFiles(EVIDENCE_DIR)
+  let db: Database
   if (!fs.existsSync(DATA_FILE)) {
     const initial = getInitialData()
     fs.writeFileSync(DATA_FILE, JSON.stringify(initial, null, 2), 'utf-8')
-    return initial
+    db = initial
+  } else {
+    try {
+      const raw = fs.readFileSync(DATA_FILE, 'utf-8')
+      db = JSON.parse(raw) as Database
+    } catch {
+      const initial = getInitialData()
+      fs.writeFileSync(DATA_FILE, JSON.stringify(initial, null, 2), 'utf-8')
+      db = initial
+    }
   }
-  try {
-    const raw = fs.readFileSync(DATA_FILE, 'utf-8')
-    return JSON.parse(raw) as Database
-  } catch {
-    const initial = getInitialData()
-    fs.writeFileSync(DATA_FILE, JSON.stringify(initial, null, 2), 'utf-8')
-    return initial
+  db = migrateDatabase(db)
+  return db
+}
+
+function migrateDatabase(db: Database): Database {
+  let changed = false
+  for (const order of db.inspectionOrders) {
+    if (order.id === 'ORD_SAMPLE_002') {
+      for (const a of order.anomalies) {
+        if (!a.evidencePaths || a.evidencePaths.length === 0) {
+          a.evidencePaths = [`/api/evidence/${SAMPLE_EVIDENCE_FILENAME}`]
+          changed = true
+        }
+      }
+    }
+    if (order.id === 'ORD_SAMPLE_001') {
+      if (!order.operationLogs.find((l) => l.id === 'LOG_002b')) {
+        const idx = order.operationLogs.findIndex((l) => l.id === 'LOG_003')
+        if (idx !== -1) {
+          order.operationLogs.splice(idx, 0, {
+            id: 'LOG_002b',
+            inspectionOrderId: 'ORD_SAMPLE_001',
+            action: 'REVIEW',
+            fromStatus: 'COMPLETED',
+            toStatus: 'REVIEWED',
+            operator: '李主管',
+            timestamp: new Date(Date.now() - 50000000).toISOString(),
+          })
+          order.reviewedAt = new Date(Date.now() - 50000000).toISOString()
+          changed = true
+        }
+      }
+    }
   }
+  if (changed) {
+    saveDatabase(db)
+  }
+  return db
 }
 
 function saveDatabase(db: Database): void {
