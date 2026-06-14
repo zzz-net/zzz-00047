@@ -7,6 +7,10 @@ import type {
   InspectionItemResult,
   AnomalyRecord,
   ApiResponse,
+  ConfigPayload,
+  ConfigImportPrecheck,
+  ConfigImportOptions,
+  ConfigImportResult,
 } from '@/types'
 
 const API_BASE = '/api'
@@ -119,4 +123,18 @@ export const exportApi = {
     return `${API_BASE}/export/csv${qs ? `?${qs}` : ''}`
   },
   orderJson: (id: string) => `${API_BASE}/export/order/${id}/json`,
+}
+
+export const configApi = {
+  exportUrl: () => `${API_BASE}/config/export`,
+  precheck: (payload: ConfigPayload) =>
+    request<{ payload: ConfigPayload; precheck: ConfigImportPrecheck }>('/config/precheck', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  doImport: (payload: ConfigPayload, options: ConfigImportOptions) =>
+    request<ConfigImportResult>('/config/import', {
+      method: 'POST',
+      body: JSON.stringify({ payload, options }),
+    }),
 }

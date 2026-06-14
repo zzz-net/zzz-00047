@@ -138,6 +138,54 @@ export const STATUS_TRANSITIONS: Record<InspectionStatus, InspectionStatus[]> = 
   CLOSED: ['REVIEWED', 'DRAFT', 'PENDING_REVIEW'],
 }
 
+export interface ConfigPayload {
+  devices: Device[]
+  shifts: Shift[]
+  checkItems: CheckItem[]
+  inspectionPlans: InspectionPlan[]
+}
+
+export interface ConfigConflict {
+  type: 'device_code'
+  code: string
+  existingId: string
+  importedId: string
+  existingName: string
+  importedName: string
+}
+
+export interface ConfigImportPrecheck {
+  valid: boolean
+  totalDevices: number
+  totalShifts: number
+  totalCheckItems: number
+  totalPlans: number
+  conflicts: ConfigConflict[]
+  missingDeviceRefs: { planId: string; planName: string; deviceId: string }[]
+  missingShiftRefs: { planId: string; planName: string; shiftId: string }[]
+  missingCheckItemRefs: { planId: string; planName: string; checkItemIds: string[] }[]
+}
+
+export interface ConfigImportOptions {
+  conflictAction: 'SKIP' | 'OVERWRITE'
+}
+
+export interface ConfigImportResult {
+  imported: {
+    devices: number
+    shifts: number
+    checkItems: number
+    plans: number
+  }
+  skipped: {
+    devices: number
+    plans: number
+  }
+  overwritten: {
+    devices: number
+  }
+}
+
 export const ERROR_CODES = {
   DUPLICATE_INSPECTION: 'DUPLICATE_INSPECTION',
   ANOMALY_MISSING_EVIDENCE: 'ANOMALY_MISSING_EVIDENCE',
@@ -145,4 +193,8 @@ export const ERROR_CODES = {
   NOT_FOUND: 'NOT_FOUND',
   VALIDATION_ERROR: 'VALIDATION_ERROR',
   INVALID_OPERATION: 'INVALID_OPERATION',
+  IMPORT_JSON_PARSE: 'IMPORT_JSON_PARSE',
+  IMPORT_SCHEMA_ERROR: 'IMPORT_SCHEMA_ERROR',
+  IMPORT_CONFLICT: 'IMPORT_CONFLICT',
+  IMPORT_MISSING_REF: 'IMPORT_MISSING_REF',
 } as const

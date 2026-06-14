@@ -18,6 +18,7 @@ import checkItemRoutes from './routes/checkItems.js'
 import planRoutes from './routes/plans.js'
 import inspectionRoutes from './routes/inspections.js'
 import fileRoutes from './routes/files.js'
+import configRoutes from './routes/config.js'
 
 // for esm mode
 const __filename = fileURLToPath(import.meta.url)
@@ -42,6 +43,7 @@ app.use('/api/check-items', checkItemRoutes)
 app.use('/api/plans', planRoutes)
 app.use('/api/inspections', inspectionRoutes)
 app.use('/api', fileRoutes)
+app.use('/api/config', configRoutes)
 
 /**
  * health
