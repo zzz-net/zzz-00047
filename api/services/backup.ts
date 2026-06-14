@@ -409,6 +409,8 @@ export function restoreBackup(
     inspectionOrders: backupData.inspectionOrders,
     statsLogs: backupData.statsLogs || existing.statsLogs || [],
     backupConfig: existing.backupConfig,
+    maintenanceReminders: backupData.maintenanceReminders || existing.maintenanceReminders || [],
+    maintenanceImportLogs: backupData.maintenanceImportLogs || existing.maintenanceImportLogs || [],
   }
 
   result.restored.shifts = restoredData.shifts.length

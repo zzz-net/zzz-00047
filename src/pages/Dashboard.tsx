@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useAppStore } from '@/store/appStore'
 import { Link } from 'react-router-dom'
 import {
@@ -10,16 +10,44 @@ import {
   CheckCircle2,
   XCircle,
   ArrowRight,
+  Wrench,
+  Calendar,
+  User,
 } from 'lucide-react'
 import StatusBadge from '@/components/StatusBadge'
+import { maintenanceApi } from '@/services/api'
+import type { MaintenanceReminder, MaintenanceSummary } from '@/types'
+import { MAINTENANCE_STATUS_LABELS, MAINTENANCE_STATUS_COLORS } from '@/types'
 
 export default function Dashboard() {
   const { orders, devices, plans, loadMasterData, loadOrders } = useAppStore()
+  const [maintenanceSummary, setMaintenanceSummary] = useState<MaintenanceSummary | null>(null)
+  const [maintenanceReminders, setMaintenanceReminders] = useState<MaintenanceReminder[]>([])
 
   useEffect(() => {
     loadMasterData()
     loadOrders()
+    loadMaintenanceData()
   }, [loadMasterData, loadOrders])
+
+  const loadMaintenanceData = async () => {
+    try {
+      const [summaryRes, listRes] = await Promise.all([
+        maintenanceApi.summary(),
+        maintenanceApi.list(),
+      ])
+      if (summaryRes.success && summaryRes.data) {
+        setMaintenanceSummary(summaryRes.data)
+      }
+      if (listRes.success && listRes.data) {
+        const active = listRes.data.filter((r) => r.status !== 'COMPLETED')
+        active.sort((a, b) => a.maintenanceDate.localeCompare(b.maintenanceDate))
+        setMaintenanceReminders(active.slice(0, 8))
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
 
   const draftCount = orders.filter((o) => o.status === 'DRAFT').length
   const pendingCount = orders.filter((o) => o.status === 'PENDING_REVIEW').length
@@ -27,6 +55,11 @@ export default function Dashboard() {
   const completedCount = orders.filter((o) => o.status === 'COMPLETED' || o.status === 'CLOSED').length
 
   const recentOrders = orders.slice(0, 8)
+
+  const getDeviceName = (deviceId: string) => {
+    const dev = devices.find((d) => d.id === deviceId)
+    return dev?.name || deviceId
+  }
 
   return (
     <div className="space-y-6">
@@ -59,27 +92,27 @@ export default function Dashboard() {
 
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
-              <CheckSquare className="w-5 h-5 text-purple-600" />
+            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+              <Wrench className="w-5 h-5 text-amber-600" />
             </div>
-            <span className="text-sm text-slate-500">已复核待关闭</span>
+            <span className="text-sm text-slate-500">保养快到期</span>
           </div>
-          <p className="text-3xl font-bold text-slate-900">{reviewedCount}</p>
-          <Link to="/review" className="text-xs text-purple-600 hover:text-purple-800 mt-1 inline-flex items-center gap-1">
-            去关闭 <ArrowRight className="w-3 h-3" />
+          <p className="text-3xl font-bold text-amber-600">{maintenanceSummary?.upcoming || 0}</p>
+          <Link to="/maintenance" className="text-xs text-amber-600 hover:text-amber-800 mt-1 inline-flex items-center gap-1">
+            去查看 <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
+            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
             </div>
-            <span className="text-sm text-slate-500">已完成</span>
+            <span className="text-sm text-slate-500">保养已逾期</span>
           </div>
-          <p className="text-3xl font-bold text-slate-900">{completedCount}</p>
-          <Link to="/history" className="text-xs text-green-600 hover:text-green-800 mt-1 inline-flex items-center gap-1">
-            查看历史 <ArrowRight className="w-3 h-3" />
+          <p className="text-3xl font-bold text-red-600">{maintenanceSummary?.overdue || 0}</p>
+          <Link to="/maintenance" className="text-xs text-red-600 hover:text-red-800 mt-1 inline-flex items-center gap-1">
+            去处理 <ArrowRight className="w-3 h-3" />
           </Link>
         </div>
       </div>
@@ -167,6 +200,51 @@ export default function Dashboard() {
                   </div>
                 )
               })}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+          <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+            <h2 className="font-bold text-slate-900 flex items-center gap-2">
+              <Wrench className="w-5 h-5 text-slate-400" />
+              待处理保养
+            </h2>
+            <Link to="/maintenance" className="text-sm text-blue-600 hover:text-blue-800">
+              全部 →
+            </Link>
+          </div>
+          {maintenanceReminders.length === 0 ? (
+            <div className="p-10 text-center text-slate-400">
+              <Wrench className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>暂无待处理保养</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-50">
+              {maintenanceReminders.map((reminder) => (
+              <div key={reminder.id} className="p-4 hover:bg-slate-50/80 transition-colors">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-slate-900 truncate">
+                      {getDeviceName(reminder.deviceId)}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {reminder.maintenanceDate}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <User className="w-3.5 h-3.5" />
+                        {reminder.responsiblePerson}
+                      </span>
+                    </div>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${MAINTENANCE_STATUS_COLORS[reminder.status]}`}>
+                    {MAINTENANCE_STATUS_LABELS[reminder.status]}
+                  </span>
+                </div>
+              </div>
+            ))}
             </div>
           )}
         </div>

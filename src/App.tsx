@@ -8,6 +8,7 @@ import HistoryPage from '@/pages/HistoryPage'
 import ConfigPage from '@/pages/ConfigPage'
 import StatsPage from '@/pages/StatsPage'
 import BackupPage from '@/pages/BackupPage'
+import MaintenancePage from '@/pages/MaintenancePage'
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="/execute" element={<ExecuteInspection />} />
           <Route path="/review" element={<ReviewPage />} />
           <Route path="/history" element={<HistoryPage />} />
+          <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/config" element={<ConfigPage />} />
           <Route path="/backup" element={<BackupPage />} />

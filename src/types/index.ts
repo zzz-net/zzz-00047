@@ -6,6 +6,51 @@ export type InspectionStatus =
   | 'REVIEWED'
   | 'CLOSED'
 
+export type MaintenanceReminderStatus = 'PENDING' | 'COMPLETED' | 'OVERDUE' | 'UPCOMING'
+
+export interface MaintenanceReminder {
+  id: string
+  deviceId: string
+  maintenanceDate: string
+  responsiblePerson: string
+  remark: string
+  status: MaintenanceReminderStatus
+  completedAt?: string
+  completedBy?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface MaintenanceImportLog {
+  id: string
+  importedAt: string
+  importedBy: string
+  totalRows: number
+  successCount: number
+  skipCount: number
+  details: {
+    row: number
+    deviceCode?: string
+    deviceName?: string
+    maintenanceDate?: string
+    action: 'IMPORTED' | 'SKIPPED'
+    reason: string
+  }[]
+}
+
+export interface MaintenanceImportResult {
+  log: MaintenanceImportLog
+  imported: MaintenanceReminder[]
+}
+
+export interface MaintenanceSummary {
+  total: number
+  pending: number
+  upcoming: number
+  overdue: number
+  completed: number
+}
+
 export type ShiftType = 'MORNING' | 'AFTERNOON' | 'NIGHT'
 
 export interface Device {
@@ -220,6 +265,20 @@ export const SEVERITY_COLORS: Record<string, string> = {
   LOW: 'bg-green-100 text-green-800',
   MEDIUM: 'bg-yellow-100 text-yellow-800',
   HIGH: 'bg-red-100 text-red-800',
+}
+
+export const MAINTENANCE_STATUS_LABELS: Record<MaintenanceReminderStatus, string> = {
+  PENDING: '待处理',
+  UPCOMING: '快到期',
+  OVERDUE: '已逾期',
+  COMPLETED: '已完成',
+}
+
+export const MAINTENANCE_STATUS_COLORS: Record<MaintenanceReminderStatus, string> = {
+  PENDING: 'bg-slate-100 text-slate-700',
+  UPCOMING: 'bg-amber-100 text-amber-700',
+  OVERDUE: 'bg-red-100 text-red-700',
+  COMPLETED: 'bg-green-100 text-green-700',
 }
 
 export const STATUS_TRANSITIONS: Record<InspectionStatus, InspectionStatus[]> = {

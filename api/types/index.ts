@@ -246,6 +246,55 @@ export interface ConfigImportResult {
   }
 }
 
+export type MaintenanceReminderStatus = 'PENDING' | 'COMPLETED' | 'OVERDUE' | 'UPCOMING'
+
+export interface MaintenanceReminder {
+  id: string
+  deviceId: string
+  maintenanceDate: string
+  responsiblePerson: string
+  remark: string
+  status: MaintenanceReminderStatus
+  completedAt?: string
+  completedBy?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface MaintenanceImportLog {
+  id: string
+  importedAt: string
+  importedBy: string
+  totalRows: number
+  successCount: number
+  skipCount: number
+  details: {
+    row: number
+    deviceCode?: string
+    deviceName?: string
+    maintenanceDate?: string
+    action: 'IMPORTED' | 'SKIPPED'
+    reason: string
+  }[]
+}
+
+export interface MaintenanceImportResult {
+  log: MaintenanceImportLog
+  imported: MaintenanceReminder[]
+}
+
+export interface Database {
+  devices: Device[]
+  shifts: Shift[]
+  checkItems: CheckItem[]
+  inspectionPlans: InspectionPlan[]
+  inspectionOrders: InspectionOrder[]
+  statsLogs: StatsLog[]
+  backupConfig?: BackupConfig
+  maintenanceReminders: MaintenanceReminder[]
+  maintenanceImportLogs: MaintenanceImportLog[]
+}
+
 export const ERROR_CODES = {
   DUPLICATE_INSPECTION: 'DUPLICATE_INSPECTION',
   ANOMALY_MISSING_EVIDENCE: 'ANOMALY_MISSING_EVIDENCE',
@@ -260,6 +309,10 @@ export const ERROR_CODES = {
   BACKUP_NOT_FOUND: 'BACKUP_NOT_FOUND',
   BACKUP_CORRUPTED: 'BACKUP_CORRUPTED',
   BACKUP_RESTORE_FAILED: 'BACKUP_RESTORE_FAILED',
+  DUPLICATE_MAINTENANCE_REMINDER: 'DUPLICATE_MAINTENANCE_REMINDER',
+  MAINTENANCE_REMINDER_NOT_FOUND: 'MAINTENANCE_REMINDER_NOT_FOUND',
+  MAINTENANCE_REMINDER_ALREADY_COMPLETED: 'MAINTENANCE_REMINDER_ALREADY_COMPLETED',
+  MAINTENANCE_REMINDER_NOT_COMPLETED: 'MAINTENANCE_REMINDER_NOT_COMPLETED',
 } as const
 
 export type BackupType = 'manual' | 'auto' | 'snapshot'

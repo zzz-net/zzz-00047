@@ -820,5 +820,7 @@ export function getInitialData(): Database {
       },
     ],
     statsLogs: [],
+    maintenanceReminders: [],
+    maintenanceImportLogs: [],
   }
 }

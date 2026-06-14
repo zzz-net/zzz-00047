@@ -19,6 +19,10 @@ import type {
   BackupRestoreOptions,
   BackupRestoreResult,
   AutoBackupMode,
+  MaintenanceReminder,
+  MaintenanceImportLog,
+  MaintenanceImportResult,
+  MaintenanceSummary,
 } from '@/types'
 
 const API_BASE = '/api'
@@ -211,4 +215,40 @@ export const backupApi = {
       method: 'POST',
       body: JSON.stringify({ options }),
     }),
+}
+
+export interface MaintenanceListFilters {
+  status?: string
+  deviceId?: string
+}
+
+export const maintenanceApi = {
+  list: (filters?: MaintenanceListFilters) => {
+    const params = new URLSearchParams()
+    if (filters) {
+      Object.entries(filters).forEach(([k, v]) => {
+        if (v) params.set(k, v)
+      })
+    }
+    const qs = params.toString()
+    return request<MaintenanceReminder[]>(`/maintenance${qs ? `?${qs}` : ''}`)
+  },
+  get: (id: string) => request<MaintenanceReminder>(`/maintenance/${id}`),
+  summary: () => request<MaintenanceSummary>('/maintenance/summary'),
+  create: (data: { deviceId: string; maintenanceDate: string; responsiblePerson: string; remark?: string }) =>
+    request<MaintenanceReminder>('/maintenance', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id: string, data: { deviceId?: string; maintenanceDate?: string; responsiblePerson?: string; remark?: string }) =>
+    request<MaintenanceReminder>(`/maintenance/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  complete: (id: string, operator: string) =>
+    request<MaintenanceReminder>(`/maintenance/${id}/complete`, { method: 'POST', body: JSON.stringify({ operator }) }),
+  undo: (id: string, operator: string) =>
+    request<MaintenanceReminder>(`/maintenance/${id}/undo`, { method: 'POST', body: JSON.stringify({ operator }) }),
+  remove: (id: string) => request<void>(`/maintenance/${id}`, { method: 'DELETE' }),
+  exportCsv: () => `${API_BASE}/maintenance/export/csv`,
+  importCsv: (csv: string, operator: string) =>
+    request<MaintenanceImportResult>('/maintenance/import/csv', {
+      method: 'POST',
+      body: JSON.stringify({ csv, operator }),
+    }),
+  importLogs: () => request<MaintenanceImportLog[]>('/maintenance/import/logs'),
 }

@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import type { Database, Device, Shift, CheckItem, InspectionPlan, InspectionOrder, StatsLog } from '../types/index.js'
+import type { Database, Device, Shift, CheckItem, InspectionPlan, InspectionOrder, StatsLog, MaintenanceReminder, MaintenanceImportLog } from '../types/index.js'
 import { getInitialData, createSampleEvidenceFiles, SAMPLE_EVIDENCE_FILENAME } from './seed.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -46,6 +46,14 @@ function migrateDatabase(db: Database): Database {
   let changed = false
   if (!db.statsLogs) {
     db.statsLogs = []
+    changed = true
+  }
+  if (!db.maintenanceReminders) {
+    db.maintenanceReminders = []
+    changed = true
+  }
+  if (!db.maintenanceImportLogs) {
+    db.maintenanceImportLogs = []
     changed = true
   }
   for (const order of db.inspectionOrders) {
@@ -154,6 +162,37 @@ export const db = {
     const data = this.getData()
     if (!data.statsLogs) data.statsLogs = []
     data.statsLogs.push(log)
+    this.save(data)
+  },
+  getMaintenanceReminders(): MaintenanceReminder[] {
+    return this.getData().maintenanceReminders || []
+  },
+  saveMaintenanceReminders(reminders: MaintenanceReminder[]): void {
+    const data = this.getData()
+    data.maintenanceReminders = reminders
+    this.save(data)
+  },
+  addMaintenanceReminder(reminder: MaintenanceReminder): void {
+    const data = this.getData()
+    if (!data.maintenanceReminders) data.maintenanceReminders = []
+    data.maintenanceReminders.push(reminder)
+    this.save(data)
+  },
+  getMaintenanceImportLogs(): MaintenanceImportLog[] {
+    return this.getData().maintenanceImportLogs || []
+  },
+  saveMaintenanceImportLogs(logs: MaintenanceImportLog[]): void {
+    const data = this.getData()
+    data.maintenanceImportLogs = logs
+    this.save(data)
+  },
+  addMaintenanceImportLog(log: MaintenanceImportLog): void {
+    const data = this.getData()
+    if (!data.maintenanceImportLogs) data.maintenanceImportLogs = []
+    data.maintenanceImportLogs.unshift(log)
+    if (data.maintenanceImportLogs.length > 50) {
+      data.maintenanceImportLogs = data.maintenanceImportLogs.slice(0, 50)
+    }
     this.save(data)
   },
 }
