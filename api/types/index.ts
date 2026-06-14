@@ -186,6 +186,7 @@ export interface Database {
   inspectionPlans: InspectionPlan[]
   inspectionOrders: InspectionOrder[]
   statsLogs: StatsLog[]
+  backupConfig?: BackupConfig
 }
 
 export const STATUS_TRANSITIONS: Record<InspectionStatus, InspectionStatus[]> = {
@@ -256,4 +257,57 @@ export const ERROR_CODES = {
   IMPORT_SCHEMA_ERROR: 'IMPORT_SCHEMA_ERROR',
   IMPORT_CONFLICT: 'IMPORT_CONFLICT',
   IMPORT_MISSING_REF: 'IMPORT_MISSING_REF',
+  BACKUP_NOT_FOUND: 'BACKUP_NOT_FOUND',
+  BACKUP_CORRUPTED: 'BACKUP_CORRUPTED',
+  BACKUP_RESTORE_FAILED: 'BACKUP_RESTORE_FAILED',
 } as const
+
+export type BackupType = 'manual' | 'auto' | 'snapshot'
+
+export interface BackupInfo {
+  id: string
+  name: string
+  createdAt: string
+  sizeBytes: number
+  type: BackupType
+  note?: string
+}
+
+export type AutoBackupMode = 'OFF' | 'DAILY' | 'STARTUP'
+
+export interface BackupConfig {
+  autoBackupMode: AutoBackupMode
+  retentionCount: number
+  lastBackupAt?: string
+}
+
+export interface BackupRestorePrecheck {
+  valid: boolean
+  errors: string[]
+  conflicts: ConfigConflict[]
+  backupInfo: BackupInfo
+  snapshotBackupId?: string
+}
+
+export interface BackupRestoreOptions {
+  conflictAction: 'SKIP' | 'OVERWRITE'
+  individualOverrides?: Record<string, 'SKIP' | 'OVERWRITE'>
+}
+
+export interface BackupRestoreResult {
+  success: boolean
+  snapshotBackupId: string
+  restored: {
+    devices: number
+    shifts: number
+    checkItems: number
+    inspectionPlans: number
+    inspectionOrders: number
+  }
+  skipped: {
+    devices: number
+  }
+  overwritten: {
+    devices: number
+  }
+}

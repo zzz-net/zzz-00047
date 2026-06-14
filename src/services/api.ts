@@ -13,6 +13,12 @@ import type {
   ConfigImportResult,
   StatsSummary,
   StatsLog,
+  BackupInfo,
+  BackupConfig,
+  BackupRestorePrecheck,
+  BackupRestoreOptions,
+  BackupRestoreResult,
+  AutoBackupMode,
 } from '@/types'
 
 const API_BASE = '/api'
@@ -182,4 +188,27 @@ export const statsApi = {
     const qs = params.toString()
     return `${API_BASE}/stats/json${qs ? `?${qs}` : ''}`
   },
+}
+
+export const backupApi = {
+  list: () => request<BackupInfo[]>('/backups'),
+  create: (note?: string) =>
+    request<BackupInfo>('/backups', {
+      method: 'POST',
+      body: note ? JSON.stringify({ note }) : JSON.stringify({}),
+    }),
+  remove: (id: string) => request<void>(`/backups/${id}`, { method: 'DELETE' }),
+  getConfig: () => request<BackupConfig>('/backups/config'),
+  updateConfig: (data: { autoBackupMode?: AutoBackupMode; retentionCount?: number }) =>
+    request<BackupConfig>('/backups/config', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  precheck: (id: string) =>
+    request<BackupRestorePrecheck>(`/backups/${id}/precheck`, { method: 'POST' }),
+  restore: (id: string, options: BackupRestoreOptions) =>
+    request<BackupRestoreResult>(`/backups/${id}/restore`, {
+      method: 'POST',
+      body: JSON.stringify({ options }),
+    }),
 }

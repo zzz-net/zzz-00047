@@ -7,6 +7,7 @@ import ReviewPage from '@/pages/ReviewPage'
 import HistoryPage from '@/pages/HistoryPage'
 import ConfigPage from '@/pages/ConfigPage'
 import StatsPage from '@/pages/StatsPage'
+import BackupPage from '@/pages/BackupPage'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/config" element={<ConfigPage />} />
+          <Route path="/backup" element={<BackupPage />} />
         </Routes>
       </Layout>
     </Router>

@@ -10,6 +10,7 @@ import {
   Bell,
   X,
   BarChart3,
+  DatabaseBackup,
 } from 'lucide-react'
 import { useAppStore } from '@/store/appStore'
 import { useEffect, useState } from 'react'
@@ -22,6 +23,7 @@ const navItems = [
   { to: '/history', label: '历史查询', icon: Search },
   { to: '/stats', label: '统计分析', icon: BarChart3 },
   { to: '/config', label: '计划配置', icon: Settings },
+  { to: '/backup', label: '备份恢复', icon: DatabaseBackup },
 ]
 
 export default function Layout({ children }: { children: React.ReactNode }) {
