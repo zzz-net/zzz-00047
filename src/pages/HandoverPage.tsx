@@ -44,6 +44,7 @@ export default function HandoverPage() {
     handoverDate: '',
     equipmentStatus: '',
     remainingIssues: '',
+    remark: '',
     handoverPerson: '',
     takeoverPerson: '',
   })
@@ -167,6 +168,7 @@ export default function HandoverPage() {
       handoverDate: record.handoverDate,
       equipmentStatus: record.equipmentStatus,
       remainingIssues: record.remainingIssues,
+      remark: record.remark || '',
       handoverPerson: record.handoverPerson,
       takeoverPerson: record.takeoverPerson,
     })
@@ -180,6 +182,7 @@ export default function HandoverPage() {
       handoverDate: '',
       equipmentStatus: '',
       remainingIssues: '',
+      remark: '',
       handoverPerson: '',
       takeoverPerson: '',
     })
@@ -456,6 +459,15 @@ export default function HandoverPage() {
                             <p className="text-sm text-red-700 whitespace-pre-wrap">{record.remainingIssues}</p>
                           </div>
                         )}
+                        {record.remark && (
+                          <div className="bg-blue-50 rounded-lg p-3 md:col-span-2">
+                            <p className="text-xs text-blue-500 mb-1 font-medium flex items-center gap-1">
+                              <FileText className="w-3 h-3" />
+                              备注
+                            </p>
+                            <p className="text-sm text-blue-700 whitespace-pre-wrap">{record.remark}</p>
+                          </div>
+                        )}
                       </div>
                       {record.operationLogs.length > 0 && (
                         <div>
@@ -702,6 +714,19 @@ export default function HandoverPage() {
                   className="w-full px-3 py-2.5 border border-red-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 resize-none bg-red-50/30"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  备注
+                  <span className="text-slate-400 font-normal ml-1">（可选）</span>
+                </label>
+                <textarea
+                  value={formData.remark}
+                  onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
+                  placeholder="其他需要记录的备注信息"
+                  rows={2}
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
             </div>
             <div className="p-5 border-t border-slate-100 flex justify-end gap-3 flex-shrink-0">
               <button
@@ -755,7 +780,8 @@ export default function HandoverPage() {
                   </li>
                   <li>
                     可选列：<code className="bg-blue-100 px-1 rounded">设备状态</code>、
-                    <code className="bg-blue-100 px-1 rounded">遗留问题</code>
+                    <code className="bg-blue-100 px-1 rounded">遗留问题</code>、
+                    <code className="bg-blue-100 px-1 rounded">备注</code>
                   </li>
                   <li>日期格式：YYYY-MM-DD</li>
                 </ul>
@@ -765,9 +791,9 @@ export default function HandoverPage() {
                 <textarea
                   value={importText}
                   onChange={(e) => setImportText(e.target.value)}
-                  placeholder={`设备编码,设备名称,班次名称,交接日期,设备状态,遗留问题,交班人,接班人
-DEV001,CNC加工中心,早班,2025-01-15,正常运行,,张三,李四
-DEV002,数控车床,中班,2025-01-15,有异响待检查,冷却液不足,王五,赵六`}
+                  placeholder={`设备编码,设备名称,班次名称,交接日期,设备状态,遗留问题,备注,交班人,接班人
+DEV001,CNC加工中心,早班,2025-01-15,正常运行,,,张三,李四
+DEV002,数控车床,中班,2025-01-15,有异响待检查,冷却液不足,需联系厂家,王五,赵六`}
                   rows={12}
                   className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm resize-none"
                 />

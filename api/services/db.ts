@@ -64,6 +64,12 @@ function migrateDatabase(db: Database): Database {
     db.handoverImportLogs = []
     changed = true
   }
+  for (const record of db.handoverRecords) {
+    if (record.remark === undefined) {
+      record.remark = ''
+      changed = true
+    }
+  }
   for (const order of db.inspectionOrders) {
     if (order.id === 'ORD_SAMPLE_002') {
       for (const a of order.anomalies) {

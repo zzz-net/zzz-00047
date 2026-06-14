@@ -298,6 +298,7 @@ export interface HandoverRecord {
   handoverDate: string
   equipmentStatus: string
   remainingIssues: string
+  remark: string
   handoverPerson: string
   takeoverPerson: string
   isConfirmed: boolean

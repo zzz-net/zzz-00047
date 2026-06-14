@@ -12,8 +12,16 @@ function normalizeDate(dateStr: string): string {
 }
 
 function isValidDate(dateStr: string): boolean {
-  const d = new Date(dateStr)
-  return !isNaN(d.getTime())
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return false
+  }
+  const [year, month, day] = dateStr.split('-').map(Number)
+  const d = new Date(year, month - 1, day)
+  return (
+    d.getFullYear() === year &&
+    d.getMonth() === month - 1 &&
+    d.getDate() === day
+  )
 }
 
 function checkDuplicateRecord(
@@ -97,6 +105,7 @@ router.post('/', (req: Request, res: Response): void => {
     handoverDate,
     equipmentStatus,
     remainingIssues,
+    remark,
     handoverPerson,
     takeoverPerson,
     operator,
@@ -151,6 +160,7 @@ router.post('/', (req: Request, res: Response): void => {
     handoverDate: normalizeDate(handoverDate),
     equipmentStatus: equipmentStatus || '',
     remainingIssues: remainingIssues || '',
+    remark: remark || '',
     handoverPerson: handoverPerson.trim(),
     takeoverPerson: takeoverPerson.trim(),
     isConfirmed: false,
@@ -181,7 +191,7 @@ router.put('/:id', (req: Request, res: Response): void => {
     })
     return
   }
-  const { deviceId, shiftId, handoverDate, equipmentStatus, remainingIssues, handoverPerson, takeoverPerson, operator } =
+  const { deviceId, shiftId, handoverDate, equipmentStatus, remainingIssues, remark, handoverPerson, takeoverPerson, operator } =
     req.body
   if (!operator) {
     res.status(400).json({
@@ -241,6 +251,7 @@ router.put('/:id', (req: Request, res: Response): void => {
     handoverDate: finalDate,
     equipmentStatus: equipmentStatus ?? existing.equipmentStatus,
     remainingIssues: remainingIssues ?? existing.remainingIssues,
+    remark: remark ?? existing.remark,
     handoverPerson: handoverPerson?.trim() ?? existing.handoverPerson,
     takeoverPerson: takeoverPerson?.trim() ?? existing.takeoverPerson,
     updatedAt: nowIso(),
@@ -360,6 +371,7 @@ router.get('/export/csv', (req: Request, res: Response): void => {
     '交接日期',
     '设备状态',
     '遗留问题',
+    '备注',
     '交班人',
     '接班人',
     '是否已确认',
@@ -384,6 +396,7 @@ router.get('/export/csv', (req: Request, res: Response): void => {
       r.handoverDate,
       r.equipmentStatus,
       r.remainingIssues,
+      r.remark,
       r.handoverPerson,
       r.takeoverPerson,
       r.isConfirmed ? '是' : '否',
@@ -477,6 +490,7 @@ router.post('/import/csv', (req: Request, res: Response): void => {
   const dateIdx = headers.findIndex((h) => h === '交接日期')
   const statusIdx = headers.findIndex((h) => h === '设备状态')
   const issuesIdx = headers.findIndex((h) => h === '遗留问题')
+  const remarkIdx = headers.findIndex((h) => h === '备注')
   const handoverPersonIdx = headers.findIndex((h) => h === '交班人')
   const takeoverPersonIdx = headers.findIndex((h) => h === '接班人')
 
@@ -513,6 +527,7 @@ router.post('/import/csv', (req: Request, res: Response): void => {
     const handoverDate = row[dateIdx] || ''
     const equipmentStatus = statusIdx !== -1 ? row[statusIdx] || '' : ''
     const remainingIssues = issuesIdx !== -1 ? row[issuesIdx] || '' : ''
+    const remark = remarkIdx !== -1 ? row[remarkIdx] || '' : ''
     const handoverPerson = handoverPersonIdx !== -1 ? row[handoverPersonIdx] || '' : ''
     const takeoverPerson = takeoverPersonIdx !== -1 ? row[takeoverPersonIdx] || '' : ''
 
@@ -594,6 +609,7 @@ router.post('/import/csv', (req: Request, res: Response): void => {
       handoverDate: normalizedDate,
       equipmentStatus,
       remainingIssues,
+      remark,
       handoverPerson: handoverPerson.trim(),
       takeoverPerson: takeoverPerson.trim(),
       isConfirmed: false,

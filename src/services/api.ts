@@ -282,6 +282,7 @@ export const handoverApi = {
     handoverDate: string
     equipmentStatus?: string
     remainingIssues?: string
+    remark?: string
     handoverPerson: string
     takeoverPerson: string
     operator: string
@@ -295,6 +296,7 @@ export const handoverApi = {
       handoverDate?: string
       equipmentStatus?: string
       remainingIssues?: string
+      remark?: string
       handoverPerson?: string
       takeoverPerson?: string
       operator: string
