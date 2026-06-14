@@ -36,11 +36,17 @@ export function getUserRole(user: string): 'supervisor' | 'operator' {
   return isSupervisor(user, orders) ? 'supervisor' : 'operator'
 }
 
-export interface StatsSummaryWithRole extends StatsSummary {
-  userRole: 'supervisor' | 'operator'
+function getDefaultDateRange(): { from: string; to: string } {
+  const to = new Date()
+  const from = new Date()
+  from.setDate(from.getDate() - 29)
+  return {
+    from: from.toISOString().slice(0, 10),
+    to: to.toISOString().slice(0, 10),
+  }
 }
 
-export function getStatsSummary(filters: StatsFilters): StatsSummaryWithRole {
+export function getStatsSummary(filters: StatsFilters): StatsSummary {
   const allOrders = db.getInspectionOrders()
   const devices = db.getDevices()
   const shifts = db.getShifts()
@@ -49,8 +55,12 @@ export function getStatsSummary(filters: StatsFilters): StatsSummaryWithRole {
     ? filters.userRole
     : 'all'
 
+  const defaultRange = getDefaultDateRange()
+
   const effectiveFilters: StatsFilters = {
     ...filters,
+    dateFrom: filters.dateFrom || defaultRange.from,
+    dateTo: filters.dateTo || defaultRange.to,
     userRole: role as 'operator' | 'supervisor' | 'all',
   }
 
@@ -102,9 +112,9 @@ export function getStatsSummary(filters: StatsFilters): StatsSummaryWithRole {
   severityCounts.push({ severity: 'HIGH', count: sevMap.get('HIGH') || 0 })
 
   const anomalyTrend: AnomalyTrendItem[] = []
-  if (filters.dateFrom && filters.dateTo) {
-    const start = new Date(filters.dateFrom)
-    const end = new Date(filters.dateTo)
+  if (effectiveFilters.dateFrom && effectiveFilters.dateTo) {
+    const start = new Date(effectiveFilters.dateFrom)
+    const end = new Date(effectiveFilters.dateTo)
     const cur = new Date(start)
     while (cur <= end) {
       const dateStr = cur.toISOString().slice(0, 10)

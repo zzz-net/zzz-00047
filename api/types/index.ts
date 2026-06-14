@@ -166,6 +166,7 @@ export interface StatsSummary {
   anomalyTrend: AnomalyTrendItem[]
   totalOrders: number
   totalAnomalies: number
+  userRole: 'supervisor' | 'operator'
 }
 
 export interface Database {

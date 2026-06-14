@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   BarChart,
   Bar,
@@ -12,11 +12,12 @@ import {
   Cell,
   LineChart,
   Line,
+  ResponsiveContainer,
 } from 'recharts'
 import { useAppStore } from '@/store/appStore'
 import { statsApi, type StatsFilters } from '@/services/api'
 import type { StatsSummary, SeverityCount } from '@/types'
-import { SEVERITY_LABELS, SHIFT_TYPE_LABELS } from '@/types'
+import { SEVERITY_LABELS } from '@/types'
 import {
   BarChart3,
   PieChart as PieChartIcon,
@@ -27,6 +28,7 @@ import {
   Calendar,
   User,
   Shield,
+  RotateCcw,
 } from 'lucide-react'
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -46,11 +48,14 @@ function getDefaultDateRange(): { from: string; to: string } {
 }
 
 export default function StatsPage() {
-  const { currentUser, notify, loadMasterData } = useAppStore()
+  const { currentUser, notify } = useAppStore()
   const [summary, setSummary] = useState<StatsSummary | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const defaultRange = getDefaultDateRange()
+  const defaultRangeRef = useRef(defaultRange)
+  const hasLoggedInitial = useRef(false)
+
   const [filters, setFilters] = useState<StatsFilters>({
     dateFrom: defaultRange.from,
     dateTo: defaultRange.to,
@@ -58,12 +63,14 @@ export default function StatsPage() {
   })
 
   useEffect(() => {
-    loadMasterData()
-  }, [loadMasterData])
-
-  useEffect(() => {
     setFilters((prev) => ({ ...prev, user: currentUser }))
   }, [currentUser])
+
+  const resetAllState = useCallback(() => {
+    setSummary(null)
+    setError(null)
+    setLoading(false)
+  }, [])
 
   const loadStats = useCallback(async () => {
     setLoading(true)
@@ -74,33 +81,63 @@ export default function StatsPage() {
         setSummary(r.data)
       } else if (r.error) {
         setError(r.error.message || '加载失败')
+        setSummary(null)
+      } else {
+        setError('加载失败')
+        setSummary(null)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : '加载失败')
+      setSummary(null)
     } finally {
       setLoading(false)
     }
   }, [filters])
 
   useEffect(() => {
+    resetAllState()
     loadStats()
-  }, [loadStats])
+  }, [filters, loadStats, resetAllState])
 
   useEffect(() => {
-    statsApi.log({
-      user: currentUser,
-      action: filters.dateFrom === defaultRange.from && filters.dateTo === defaultRange.to ? 'VIEW' : 'FILTER',
-      filters: {
-        dateFrom: filters.dateFrom,
-        dateTo: filters.dateTo,
-      },
-    }).catch(() => {})
-  }, [filters.dateFrom, filters.dateTo, currentUser, defaultRange.from, defaultRange.to])
+    if (!hasLoggedInitial.current && currentUser) {
+      statsApi
+        .log({
+          user: currentUser,
+          action: 'VIEW',
+          filters: {
+            dateFrom: filters.dateFrom,
+            dateTo: filters.dateTo,
+          },
+        })
+        .catch(() => {})
+      hasLoggedInitial.current = true
+    }
+  }, [currentUser, filters.dateFrom, filters.dateTo])
+
+  useEffect(() => {
+    if (!hasLoggedInitial.current) return
+    statsApi
+      .log({
+        user: currentUser,
+        action: 'FILTER',
+        filters: {
+          dateFrom: filters.dateFrom,
+          dateTo: filters.dateTo,
+        },
+      })
+      .catch(() => {})
+  }, [filters.dateFrom, filters.dateTo, currentUser])
 
   const handleExport = () => {
     const url = statsApi.csvUrl(filters)
     window.open(url, '_blank')
-    statsApi.log({ user: currentUser, action: 'EXPORT', filters: { dateFrom: filters.dateFrom, dateTo: filters.dateTo } })
+    statsApi
+      .log({
+        user: currentUser,
+        action: 'EXPORT',
+        filters: { dateFrom: filters.dateFrom, dateTo: filters.dateTo },
+      })
       .catch(() => {})
     notify('info', '正在导出统计 CSV')
   }
@@ -111,6 +148,11 @@ export default function StatsPage() {
 
   const handleFilterChange = (key: keyof StatsFilters, value: string | undefined) => {
     setFilters((prev) => ({ ...prev, [key]: value || undefined }))
+  }
+
+  const handleResetDate = () => {
+    const dr = defaultRangeRef.current
+    setFilters((prev) => ({ ...prev, dateFrom: dr.from, dateTo: dr.to }))
   }
 
   const hasData = summary && summary.totalOrders > 0
@@ -162,7 +204,14 @@ export default function StatsPage() {
               className="flex-1 px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <div className="flex items-center gap-2 justify-end">
+          <div className="flex items-center gap-2 justify-end flex-wrap">
+            <button
+              onClick={handleResetDate}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 text-sm font-medium transition"
+            >
+              <RotateCcw className="w-4 h-4" />
+              重置日期
+            </button>
             <button
               onClick={handleExport}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 text-sm font-medium transition"
@@ -232,10 +281,25 @@ export default function StatsPage() {
           </button>
         </div>
       ) : !hasData ? (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-16 text-center">
-          <BarChart3 className="w-12 h-12 mx-auto text-slate-200 mb-4" />
-          <p className="text-slate-400 text-lg">该时段暂无数据</p>
-          <p className="text-slate-300 text-sm mt-1">请尝试调整日期范围或创建点检单</p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[
+            { title: '设备维度完成率', icon: BarChart3, color: 'text-blue-600' },
+            { title: '各班次异常率', icon: BarChart3, color: 'text-orange-500' },
+            { title: '异常严重程度分布', icon: PieChartIcon, color: 'text-purple-500' },
+            { title: `异常趋势（${filters.dateFrom} 至 ${filters.dateTo}）`, icon: TrendingUp, color: 'text-green-500' },
+          ].map((item) => (
+            <div key={item.title} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <item.icon className={`w-4 h-4 ${item.color}`} />
+                <h4 className="text-sm font-semibold text-slate-700">{item.title}</h4>
+              </div>
+              <div className="h-64 w-full flex flex-col items-center justify-center">
+                <item.icon className="w-12 h-12 text-slate-200 mb-3" />
+                <p className="text-slate-400 text-base">该时段暂无数据</p>
+                <p className="text-slate-300 text-sm mt-1">请尝试调整日期范围或创建点检单</p>
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -244,11 +308,12 @@ export default function StatsPage() {
               <BarChart3 className="w-4 h-4 text-blue-600" />
               <h4 className="text-sm font-semibold text-slate-700">设备维度完成率</h4>
             </div>
-            <div className="h-64 w-full flex items-center justify-center overflow-hidden">
-              <BarChart width={380} height={220} data={summary.deviceCompletionRates} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={summary.deviceCompletionRates} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="deviceName" tick={{ fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
-                  <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} unit="%" />
+                  <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} unit="%" domain={[0, 100]} />
                   <Tooltip
                     formatter={(value: number) => [`${value.toFixed(2)}%`, '完成率']}
                     labelFormatter={(label) => `设备: ${label}`}
@@ -256,6 +321,7 @@ export default function StatsPage() {
                   />
                   <Bar dataKey="rate" name="完成率" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
@@ -264,8 +330,9 @@ export default function StatsPage() {
               <BarChart3 className="w-4 h-4 text-orange-500" />
               <h4 className="text-sm font-semibold text-slate-700">各班次异常率</h4>
             </div>
-            <div className="h-64 w-full flex items-center justify-center overflow-hidden">
-              <BarChart width={380} height={220} data={summary.shiftAnomalyRates} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={summary.shiftAnomalyRates} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis
                     dataKey="shiftName"
@@ -273,7 +340,7 @@ export default function StatsPage() {
                     tickLine={false}
                     axisLine={{ stroke: '#e2e8f0' }}
                   />
-                  <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} unit="%" />
+                  <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} unit="%" domain={[0, 'auto']} />
                   <Tooltip
                     formatter={(value: number) => [`${value.toFixed(2)}%`, '异常率']}
                     labelFormatter={(label) => `班次: ${label}`}
@@ -281,6 +348,7 @@ export default function StatsPage() {
                   />
                   <Bar dataKey="rate" name="异常率" fill="#f97316" radius={[4, 4, 0, 0]} />
                 </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
@@ -289,11 +357,15 @@ export default function StatsPage() {
               <PieChartIcon className="w-4 h-4 text-purple-500" />
               <h4 className="text-sm font-semibold text-slate-700">异常严重程度分布</h4>
             </div>
-            <div className="h-64 w-full flex items-center justify-center overflow-hidden">
+            <div className="h-64 w-full">
               {pieTotal === 0 ? (
-                <div className="text-slate-400 text-sm">暂无异常数据</div>
+                <div className="h-full w-full flex flex-col items-center justify-center">
+                  <PieChartIcon className="w-10 h-10 text-slate-200 mb-2" />
+                  <div className="text-slate-400 text-sm">暂无异常数据</div>
+                </div>
               ) : (
-                <PieChart width={380} height={220}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
                     <Pie
                       data={pieData}
                       dataKey="count"
@@ -319,6 +391,7 @@ export default function StatsPage() {
                       formatter={(value) => SEVERITY_LABELS[value] || value}
                     />
                   </PieChart>
+                </ResponsiveContainer>
               )}
             </div>
           </div>
@@ -326,13 +399,19 @@ export default function StatsPage() {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="w-4 h-4 text-green-500" />
-              <h4 className="text-sm font-semibold text-slate-700">异常趋势（近30天）</h4>
+              <h4 className="text-sm font-semibold text-slate-700">
+                异常趋势（{filters.dateFrom ? filters.dateFrom.slice(5) : ''} ~ {filters.dateTo ? filters.dateTo.slice(5) : ''}）
+              </h4>
             </div>
-            <div className="h-64 w-full flex items-center justify-center overflow-hidden">
+            <div className="h-64 w-full">
               {summary.anomalyTrend.length === 0 ? (
-                <div className="text-slate-400 text-sm">暂无趋势数据</div>
+                <div className="h-full w-full flex flex-col items-center justify-center">
+                  <TrendingUp className="w-10 h-10 text-slate-200 mb-2" />
+                  <div className="text-slate-400 text-sm">暂无趋势数据</div>
+                </div>
               ) : (
-                <LineChart width={380} height={220} data={summary.anomalyTrend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={summary.anomalyTrend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis
                       dataKey="date"
@@ -357,6 +436,7 @@ export default function StatsPage() {
                       activeDot={{ r: 5 }}
                     />
                   </LineChart>
+                </ResponsiveContainer>
               )}
             </div>
           </div>
