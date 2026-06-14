@@ -4,6 +4,7 @@ import {
   addStatsLog,
   getStatsLogs,
   buildStatsCsv,
+  buildStatsJson,
   getUserRole,
   type StatsFilters,
 } from '../services/stats.js'
@@ -35,6 +36,7 @@ router.get(
     const user = req.query.user as string | undefined
     const dateFrom = req.query.dateFrom as string | undefined
     const dateTo = req.query.dateTo as string | undefined
+    const deviceId = req.query.deviceId as string | undefined
 
     let userRole: 'operator' | 'supervisor' | 'all' = 'all'
     if (user) {
@@ -46,6 +48,7 @@ router.get(
       dateTo,
       user,
       userRole,
+      deviceId,
     }
 
     const summary = getStatsSummary(filters)
@@ -82,6 +85,7 @@ router.get(
     const user = req.query.user as string | undefined
     const dateFrom = req.query.dateFrom as string | undefined
     const dateTo = req.query.dateTo as string | undefined
+    const deviceId = req.query.deviceId as string | undefined
 
     let userRole: 'operator' | 'supervisor' | 'all' = 'all'
     if (user) {
@@ -93,6 +97,7 @@ router.get(
       dateTo,
       user,
       userRole,
+      deviceId,
     }
 
     const summary = getStatsSummary(filters)
@@ -104,6 +109,36 @@ router.get(
     res.setHeader('Content-Type', 'text/csv; charset=utf-8')
     res.setHeader('Content-Disposition', `attachment; filename="stats_${dateFrom || 'start'}_${dateTo || 'end'}.csv"`)
     res.send(content)
+  }),
+)
+
+router.get(
+  '/json',
+  wrap((req: Request, res: Response): void => {
+    const user = req.query.user as string | undefined
+    const dateFrom = req.query.dateFrom as string | undefined
+    const dateTo = req.query.dateTo as string | undefined
+    const deviceId = req.query.deviceId as string | undefined
+
+    let userRole: 'operator' | 'supervisor' | 'all' = 'all'
+    if (user) {
+      userRole = getUserRole(user) === 'supervisor' ? 'all' : 'operator'
+    }
+
+    const filters: StatsFilters = {
+      dateFrom,
+      dateTo,
+      user,
+      userRole,
+      deviceId,
+    }
+
+    const summary = getStatsSummary(filters)
+    const json = buildStatsJson(summary)
+
+    res.setHeader('Content-Type', 'application/json; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="stats_${dateFrom || 'start'}_${dateTo || 'end'}.json"`)
+    res.send(json)
   }),
 )
 

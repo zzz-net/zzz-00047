@@ -145,6 +145,7 @@ export interface StatsFilters {
   dateFrom?: string
   dateTo?: string
   user?: string
+  deviceId?: string
 }
 
 export const statsApi = {
@@ -170,5 +171,15 @@ export const statsApi = {
     }
     const qs = params.toString()
     return `${API_BASE}/stats/csv${qs ? `?${qs}` : ''}`
+  },
+  jsonUrl: (filters?: StatsFilters) => {
+    const params = new URLSearchParams()
+    if (filters) {
+      Object.entries(filters).forEach(([k, v]) => {
+        if (v) params.set(k, v)
+      })
+    }
+    const qs = params.toString()
+    return `${API_BASE}/stats/json${qs ? `?${qs}` : ''}`
   },
 }

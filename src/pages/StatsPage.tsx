@@ -16,7 +16,7 @@ import {
 } from 'recharts'
 import { useAppStore } from '@/store/appStore'
 import { statsApi, type StatsFilters } from '@/services/api'
-import type { StatsSummary, SeverityCount } from '@/types'
+import type { StatsSummary, SeverityCount, OperatorStats } from '@/types'
 import { SEVERITY_LABELS } from '@/types'
 import {
   BarChart3,
@@ -29,6 +29,13 @@ import {
   User,
   Shield,
   RotateCcw,
+  Monitor,
+  FileJson,
+  FileSpreadsheet,
+  X,
+  Check,
+  Users,
+  Table,
 } from 'lucide-react'
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -36,6 +43,12 @@ const SEVERITY_COLORS: Record<string, string> = {
   MEDIUM: '#eab308',
   HIGH: '#ef4444',
 }
+
+const STORAGE_KEY = 'stats_filters'
+const EXPORT_WARNING_THRESHOLD = 500
+
+type ExportFormat = 'csv' | 'json'
+type StatsTab = 'overview' | 'operator'
 
 function getDefaultDateRange(): { from: string; to: string } {
   const to = new Date()
@@ -47,23 +60,77 @@ function getDefaultDateRange(): { from: string; to: string } {
   }
 }
 
+function loadFiltersFromStorage(): StatsFilters | null {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      return JSON.parse(saved) as StatsFilters
+    }
+  } catch {
+    // ignore
+  }
+  return null
+}
+
+function saveFiltersToStorage(filters: StatsFilters): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filters))
+  } catch {
+    // ignore
+  }
+}
+
+function formatTimestamp(): string {
+  const now = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return (
+    now.getFullYear().toString() +
+    pad(now.getMonth() + 1) +
+    pad(now.getDate()) +
+    '_' +
+    pad(now.getHours()) +
+    pad(now.getMinutes()) +
+    pad(now.getSeconds())
+  )
+}
+
 export default function StatsPage() {
-  const { currentUser, notify } = useAppStore()
+  const { currentUser, notify, devices, loadMasterData } = useAppStore()
   const [summary, setSummary] = useState<StatsSummary | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const defaultRange = getDefaultDateRange()
   const defaultRangeRef = useRef(defaultRange)
   const hasLoggedInitial = useRef(false)
+  const [activeTab, setActiveTab] = useState<StatsTab>('overview')
+  const [showExportDialog, setShowExportDialog] = useState(false)
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('csv')
+  const [exportWarningShown, setExportWarningShown] = useState(false)
 
-  const [filters, setFilters] = useState<StatsFilters>({
-    dateFrom: defaultRange.from,
-    dateTo: defaultRange.to,
-    user: currentUser,
-  })
+  const getInitialFilters = (): StatsFilters => {
+    const saved = loadFiltersFromStorage()
+    if (saved) {
+      return saved
+    }
+    return {
+      dateFrom: defaultRange.from,
+      dateTo: defaultRange.to,
+      user: currentUser,
+    }
+  }
+
+  const [filters, setFilters] = useState<StatsFilters>(getInitialFilters)
 
   useEffect(() => {
-    setFilters((prev) => ({ ...prev, user: currentUser }))
+    loadMasterData()
+  }, [loadMasterData])
+
+  useEffect(() => {
+    setFilters((prev) => {
+      const updated = { ...prev, user: currentUser }
+      saveFiltersToStorage(updated)
+      return updated
+    })
   }, [currentUser])
 
   const resetAllState = useCallback(() => {
@@ -130,8 +197,36 @@ export default function StatsPage() {
   }, [filters.dateFrom, filters.dateTo, currentUser])
 
   const handleExport = () => {
-    const url = statsApi.csvUrl(filters)
-    window.open(url, '_blank')
+    setExportWarningShown(false)
+    setShowExportDialog(true)
+  }
+
+  const confirmExport = () => {
+    const totalRecords = summary?.totalOrders || 0
+    if (totalRecords > EXPORT_WARNING_THRESHOLD && !exportWarningShown) {
+      setExportWarningShown(true)
+      return
+    }
+
+    const ts = formatTimestamp()
+    const datePart = `${filters.dateFrom || 'start'}_${filters.dateTo || 'end'}`
+    const fileName = `stats_${datePart}_${ts}.${exportFormat}`
+
+    let url: string
+    if (exportFormat === 'csv') {
+      url = statsApi.csvUrl(filters)
+    } else {
+      url = statsApi.jsonUrl(filters)
+    }
+
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    link.target = '_blank'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
     statsApi
       .log({
         user: currentUser,
@@ -139,7 +234,9 @@ export default function StatsPage() {
         filters: { dateFrom: filters.dateFrom, dateTo: filters.dateTo },
       })
       .catch(() => {})
-    notify('info', '正在导出统计 CSV')
+
+    notify('info', `正在导出统计 ${exportFormat.toUpperCase()} 格式`)
+    setShowExportDialog(false)
   }
 
   const handleRetry = () => {
@@ -147,18 +244,29 @@ export default function StatsPage() {
   }
 
   const handleFilterChange = (key: keyof StatsFilters, value: string | undefined) => {
-    setFilters((prev) => ({ ...prev, [key]: value || undefined }))
+    setFilters((prev) => {
+      const updated = { ...prev, [key]: value || undefined }
+      saveFiltersToStorage(updated)
+      return updated
+    })
   }
 
   const handleResetDate = () => {
     const dr = defaultRangeRef.current
-    setFilters((prev) => ({ ...prev, dateFrom: dr.from, dateTo: dr.to }))
+    setFilters((prev) => {
+      const updated = { ...prev, dateFrom: dr.from, dateTo: dr.to }
+      saveFiltersToStorage(updated)
+      return updated
+    })
   }
 
   const hasData = summary && summary.totalOrders > 0
+  const hasOperatorData = summary && summary.operatorStats && summary.operatorStats.length > 0
 
   const pieData = summary?.severityCounts.filter((s) => s.count > 0) || []
   const pieTotal = pieData.reduce((sum, item) => sum + item.count, 0)
+
+  const totalExportRecords = summary?.totalOrders || 0
 
   return (
     <div className="space-y-6">
@@ -183,7 +291,23 @@ export default function StatsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="flex items-center gap-2">
+            <Monitor className="w-4 h-4 text-slate-400 flex-shrink-0" />
+            <label className="text-sm text-slate-500 whitespace-nowrap">设备</label>
+            <select
+              value={filters.deviceId || ''}
+              onChange={(e) => handleFilterChange('deviceId', e.target.value)}
+              className="flex-1 px-3 py-2 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">全部设备</option>
+              {devices.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-slate-400 flex-shrink-0" />
             <label className="text-sm text-slate-500 whitespace-nowrap">开始日期</label>
@@ -210,14 +334,14 @@ export default function StatsPage() {
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 text-sm font-medium transition"
             >
               <RotateCcw className="w-4 h-4" />
-              重置日期
+              重置
             </button>
             <button
               onClick={handleExport}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-green-50 text-green-700 hover:bg-green-100 border border-green-200 text-sm font-medium transition"
             >
               <Download className="w-4 h-4" />
-              导出 CSV
+              导出
             </button>
             <button
               onClick={loadStats}
@@ -262,6 +386,33 @@ export default function StatsPage() {
         )}
       </div>
 
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-2">
+        <div className="flex gap-1">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${
+              activeTab === 'overview'
+                ? 'bg-blue-500 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            概览统计
+          </button>
+          <button
+            onClick={() => setActiveTab('operator')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition ${
+              activeTab === 'operator'
+                ? 'bg-blue-500 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            按操作员
+          </button>
+        </div>
+      </div>
+
       {loading ? (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-16 text-center">
           <RefreshCw className="w-10 h-10 mx-auto text-slate-300 animate-spin mb-3" />
@@ -280,6 +431,8 @@ export default function StatsPage() {
             重试
           </button>
         </div>
+      ) : activeTab === 'operator' ? (
+        <OperatorStatsSection hasData={hasOperatorData} operatorStats={summary?.operatorStats || []} />
       ) : !hasData ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {[
@@ -442,6 +595,222 @@ export default function StatsPage() {
           </div>
         </div>
       )}
+
+      {showExportDialog && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-800">导出统计数据</h3>
+              <button
+                onClick={() => setShowExportDialog(false)}
+                className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-2 block">选择格式</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setExportFormat('csv')}
+                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
+                      exportFormat === 'csv'
+                        ? 'border-green-500 bg-green-50 text-green-700'
+                        : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                    }`}
+                  >
+                    <FileSpreadsheet className="w-8 h-8" />
+                    <span className="text-sm font-medium">CSV</span>
+                    <span className="text-xs opacity-70">表格格式</span>
+                  </button>
+                  <button
+                    onClick={() => setExportFormat('json')}
+                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition ${
+                      exportFormat === 'json'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-slate-200 hover:border-slate-300 text-slate-600'
+                    }`}
+                  >
+                    <FileJson className="w-8 h-8" />
+                    <span className="text-sm font-medium">JSON</span>
+                    <span className="text-xs opacity-70">数据格式</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-3">
+                <p className="text-xs text-slate-500 mb-1">导出范围</p>
+                <p className="text-sm text-slate-700">
+                  {filters.dateFrom || '开始'} ~ {filters.dateTo || '结束'}
+                  {filters.deviceId && devices.find((d) => d.id === filters.deviceId)
+                    ? ` · ${devices.find((d) => d.id === filters.deviceId)?.name}`
+                    : ' · 全部设备'}
+                </p>
+                <p className="text-sm text-slate-600 mt-1">
+                  共 <span className="font-semibold">{totalExportRecords}</span> 条点检单记录
+                </p>
+              </div>
+
+              {exportWarningShown && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800">数据量较大</p>
+                    <p className="text-xs text-amber-600 mt-0.5">
+                      共 {totalExportRecords} 条记录，超过 {EXPORT_WARNING_THRESHOLD} 条，导出可能较慢。确定要继续吗？
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowExportDialog(false)}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-sm font-medium transition"
+              >
+                取消
+              </button>
+              <button
+                onClick={confirmExport}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-green-500 text-white hover:bg-green-600 text-sm font-medium transition flex items-center justify-center gap-2"
+              >
+                <Check className="w-4 h-4" />
+                {exportWarningShown ? '确认导出' : '导出'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function OperatorStatsSection({
+  hasData,
+  operatorStats,
+}: {
+  hasData: boolean
+  operatorStats: OperatorStats[]
+}) {
+  if (!hasData || operatorStats.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-16 text-center">
+        <Users className="w-12 h-12 mx-auto text-slate-200 mb-4" />
+        <p className="text-slate-400">该时段暂无操作员数据</p>
+      </div>
+    )
+  }
+
+  const chartData = operatorStats.map((s) => ({
+    operator: s.operator,
+    总工单数: s.totalOrders,
+    已关闭: s.closedOrders,
+    异常数: s.totalAnomalies,
+  }))
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <BarChart3 className="w-4 h-4 text-indigo-500" />
+          <h4 className="text-sm font-semibold text-slate-700">操作员工作量对比</h4>
+        </div>
+        <div className="h-80 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="operator" tick={{ fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+              <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} allowDecimals={false} />
+              <Tooltip
+                contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }}
+              />
+              <Legend />
+              <Bar dataKey="总工单数" name="总工单" fill="#6366f1" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="已关闭" name="已关闭" fill="#22c55e" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="异常数" name="异常数" fill="#f97316" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Table className="w-4 h-4 text-slate-500" />
+          <h4 className="text-sm font-semibold text-slate-700">操作员详细统计</h4>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  操作员
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  总工单数
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  已关闭
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  异常数
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  已复核
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  复核通过率
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {operatorStats.map((stat) => (
+                <tr key={stat.operator} className="hover:bg-slate-50/50 transition">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                        <User className="w-4 h-4 text-indigo-600" />
+                      </div>
+                      <span className="text-sm font-medium text-slate-900">{stat.operator}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm text-slate-700 font-medium">
+                    {stat.totalOrders}
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm text-green-600 font-medium">
+                    {stat.closedOrders}
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm">
+                    {stat.totalAnomalies > 0 ? (
+                      <span className="text-orange-600 font-medium">{stat.totalAnomalies}</span>
+                    ) : (
+                      <span className="text-slate-400">0</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">
+                    {stat.reviewedOrders}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-indigo-500 rounded-full"
+                          style={{ width: `${Math.min(stat.reviewPassRate, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium text-indigo-600 w-14 text-right">
+                        {stat.reviewPassRate.toFixed(1)}%
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   )
 }

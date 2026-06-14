@@ -9,6 +9,7 @@ import type {
   StatsLog,
   Device,
   Shift,
+  OperatorStats,
 } from '../types/index.js'
 
 export interface StatsFilters {
@@ -16,12 +17,14 @@ export interface StatsFilters {
   dateTo?: string
   user?: string
   userRole?: 'operator' | 'supervisor' | 'all'
+  deviceId?: string
 }
 
 function filterOrders(orders: InspectionOrder[], filters: StatsFilters): InspectionOrder[] {
   return orders.filter((o) => {
     if (filters.dateFrom && o.shiftDate < filters.dateFrom) return false
     if (filters.dateTo && o.shiftDate > filters.dateTo) return false
+    if (filters.deviceId && o.deviceId !== filters.deviceId) return false
     if (filters.user && filters.userRole === 'operator' && o.operator !== filters.user) return false
     return true
   })
@@ -135,11 +138,57 @@ export function getStatsSummary(filters: StatsFilters): StatsSummary {
     totalAnomalies += o.anomalies.length
   }
 
+  const operatorMap = new Map<string, {
+    totalOrders: number
+    closedOrders: number
+    totalAnomalies: number
+    submittedOrders: number
+    reviewedOrders: number
+  }>()
+
+  for (const order of nonDraftOrders) {
+    const op = order.operator
+    if (!operatorMap.has(op)) {
+      operatorMap.set(op, {
+        totalOrders: 0,
+        closedOrders: 0,
+        totalAnomalies: 0,
+        submittedOrders: 0,
+        reviewedOrders: 0,
+      })
+    }
+    const stats = operatorMap.get(op)!
+    stats.totalOrders++
+    if (order.status === 'CLOSED') stats.closedOrders++
+    stats.totalAnomalies += order.anomalies.length
+    if (order.status === 'SUBMITTED' || order.status === 'PENDING_REVIEW' ||
+        order.status === 'COMPLETED' || order.status === 'REVIEWED' || order.status === 'CLOSED') {
+      stats.submittedOrders++
+    }
+    if (order.status === 'REVIEWED' || order.status === 'CLOSED') {
+      stats.reviewedOrders++
+    }
+  }
+
+  const operatorStats: OperatorStats[] = Array.from(operatorMap.entries()).map(([operator, stats]) => ({
+    operator,
+    totalOrders: stats.totalOrders,
+    closedOrders: stats.closedOrders,
+    totalAnomalies: stats.totalAnomalies,
+    reviewedOrders: stats.reviewedOrders,
+    reviewPassRate: stats.submittedOrders > 0
+      ? Math.round((stats.reviewedOrders / stats.submittedOrders) * 10000) / 100
+      : 0,
+  }))
+
+  operatorStats.sort((a, b) => b.totalOrders - a.totalOrders)
+
   return {
     deviceCompletionRates,
     shiftAnomalyRates,
     severityCounts,
     anomalyTrend,
+    operatorStats,
     totalOrders,
     totalAnomalies,
     userRole: (role as 'supervisor' | 'operator' | 'all') === 'all' ? 'supervisor' : (role as 'supervisor' | 'operator'),
@@ -190,5 +239,16 @@ export function buildStatsCsv(summary: StatsSummary): string {
     lines.push(`${t.date},${t.count}`)
   }
 
+  lines.push('')
+  lines.push('操作员统计')
+  lines.push('操作员,总工单数,已关闭数,异常数,已复核数,复核通过率(%)')
+  for (const o of summary.operatorStats) {
+    lines.push(`${o.operator},${o.totalOrders},${o.closedOrders},${o.totalAnomalies},${o.reviewedOrders},${o.reviewPassRate.toFixed(2)}`)
+  }
+
   return lines.join('\n')
+}
+
+export function buildStatsJson(summary: StatsSummary): string {
+  return JSON.stringify(summary, null, 2)
 }

@@ -159,11 +159,21 @@ export interface AnomalyTrendItem {
   count: number
 }
 
+export interface OperatorStats {
+  operator: string
+  totalOrders: number
+  closedOrders: number
+  totalAnomalies: number
+  reviewedOrders: number
+  reviewPassRate: number
+}
+
 export interface StatsSummary {
   deviceCompletionRates: DeviceCompletionRate[]
   shiftAnomalyRates: ShiftAnomalyRate[]
   severityCounts: SeverityCount[]
   anomalyTrend: AnomalyTrendItem[]
+  operatorStats: OperatorStats[]
   totalOrders: number
   totalAnomalies: number
   userRole: 'supervisor' | 'operator'
