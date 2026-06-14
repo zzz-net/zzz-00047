@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import type { Database, Device, Shift, CheckItem, InspectionPlan, InspectionOrder, StatsLog, MaintenanceReminder, MaintenanceImportLog } from '../types/index.js'
+import type { Database, Device, Shift, CheckItem, InspectionPlan, InspectionOrder, StatsLog, MaintenanceReminder, MaintenanceImportLog, HandoverRecord, HandoverImportLog } from '../types/index.js'
 import { getInitialData, createSampleEvidenceFiles, SAMPLE_EVIDENCE_FILENAME } from './seed.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -54,6 +54,14 @@ function migrateDatabase(db: Database): Database {
   }
   if (!db.maintenanceImportLogs) {
     db.maintenanceImportLogs = []
+    changed = true
+  }
+  if (!db.handoverRecords) {
+    db.handoverRecords = []
+    changed = true
+  }
+  if (!db.handoverImportLogs) {
+    db.handoverImportLogs = []
     changed = true
   }
   for (const order of db.inspectionOrders) {
@@ -192,6 +200,37 @@ export const db = {
     data.maintenanceImportLogs.unshift(log)
     if (data.maintenanceImportLogs.length > 50) {
       data.maintenanceImportLogs = data.maintenanceImportLogs.slice(0, 50)
+    }
+    this.save(data)
+  },
+  getHandoverRecords(): HandoverRecord[] {
+    return this.getData().handoverRecords || []
+  },
+  saveHandoverRecords(records: HandoverRecord[]): void {
+    const data = this.getData()
+    data.handoverRecords = records
+    this.save(data)
+  },
+  addHandoverRecord(record: HandoverRecord): void {
+    const data = this.getData()
+    if (!data.handoverRecords) data.handoverRecords = []
+    data.handoverRecords.push(record)
+    this.save(data)
+  },
+  getHandoverImportLogs(): HandoverImportLog[] {
+    return this.getData().handoverImportLogs || []
+  },
+  saveHandoverImportLogs(logs: HandoverImportLog[]): void {
+    const data = this.getData()
+    data.handoverImportLogs = logs
+    this.save(data)
+  },
+  addHandoverImportLog(log: HandoverImportLog): void {
+    const data = this.getData()
+    if (!data.handoverImportLogs) data.handoverImportLogs = []
+    data.handoverImportLogs.unshift(log)
+    if (data.handoverImportLogs.length > 50) {
+      data.handoverImportLogs = data.handoverImportLogs.slice(0, 50)
     }
     this.save(data)
   },

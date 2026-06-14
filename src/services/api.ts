@@ -23,6 +23,9 @@ import type {
   MaintenanceImportLog,
   MaintenanceImportResult,
   MaintenanceSummary,
+  HandoverRecord,
+  HandoverImportLog,
+  HandoverImportResult,
 } from '@/types'
 
 const API_BASE = '/api'
@@ -251,4 +254,66 @@ export const maintenanceApi = {
       body: JSON.stringify({ csv, operator }),
     }),
   importLogs: () => request<MaintenanceImportLog[]>('/maintenance/import/logs'),
+}
+
+export interface HandoverListFilters {
+  deviceId?: string
+  shiftId?: string
+  dateFrom?: string
+  dateTo?: string
+  isConfirmed?: string
+}
+
+export const handoverApi = {
+  list: (filters?: HandoverListFilters) => {
+    const params = new URLSearchParams()
+    if (filters) {
+      Object.entries(filters).forEach(([k, v]) => {
+        if (v !== undefined && v !== '') params.set(k, v)
+      })
+    }
+    const qs = params.toString()
+    return request<HandoverRecord[]>(`/handover${qs ? `?${qs}` : ''}`)
+  },
+  get: (id: string) => request<HandoverRecord>(`/handover/${id}`),
+  create: (data: {
+    deviceId: string
+    shiftId: string
+    handoverDate: string
+    equipmentStatus?: string
+    remainingIssues?: string
+    handoverPerson: string
+    takeoverPerson: string
+    operator: string
+  }) =>
+    request<HandoverRecord>('/handover', { method: 'POST', body: JSON.stringify(data) }),
+  update: (
+    id: string,
+    data: {
+      deviceId?: string
+      shiftId?: string
+      handoverDate?: string
+      equipmentStatus?: string
+      remainingIssues?: string
+      handoverPerson?: string
+      takeoverPerson?: string
+      operator: string
+    },
+  ) =>
+    request<HandoverRecord>(`/handover/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  confirm: (id: string, operator: string) =>
+    request<HandoverRecord>(`/handover/${id}/confirm`, { method: 'POST', body: JSON.stringify({ operator }) }),
+  undoConfirm: (id: string, operator: string) =>
+    request<HandoverRecord>(`/handover/${id}/undo-confirm`, {
+      method: 'POST',
+      body: JSON.stringify({ operator }),
+    }),
+  remove: (id: string) => request<void>(`/handover/${id}`, { method: 'DELETE' }),
+  exportCsv: () => `${API_BASE}/handover/export/csv`,
+  importCsv: (csv: string, operator: string) =>
+    request<HandoverImportResult>('/handover/import/csv', {
+      method: 'POST',
+      body: JSON.stringify({ csv, operator }),
+    }),
+  importLogs: () => request<HandoverImportLog[]>('/handover/import/logs'),
 }

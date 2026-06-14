@@ -822,5 +822,7 @@ export function getInitialData(): Database {
     statsLogs: [],
     maintenanceReminders: [],
     maintenanceImportLogs: [],
+    handoverRecords: [],
+    handoverImportLogs: [],
   }
 }

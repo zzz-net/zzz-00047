@@ -22,6 +22,7 @@ import configRoutes from './routes/config.js'
 import statsRoutes from './routes/stats.js'
 import backupRoutes from './routes/backup.js'
 import maintenanceRoutes from './routes/maintenance.js'
+import handoverRoutes from './routes/handover.js'
 
 // for esm mode
 const __filename = fileURLToPath(import.meta.url)
@@ -50,6 +51,7 @@ app.use('/api/config', configRoutes)
 app.use('/api/stats', statsRoutes)
 app.use('/api/backups', backupRoutes)
 app.use('/api/maintenance', maintenanceRoutes)
+app.use('/api/handover', handoverRoutes)
 
 /**
  * health

@@ -12,6 +12,7 @@ import {
   BarChart3,
   DatabaseBackup,
   Wrench,
+  ArrowRightLeft,
 } from 'lucide-react'
 import { useAppStore } from '@/store/appStore'
 import { useEffect, useState } from 'react'
@@ -22,6 +23,7 @@ const navItems = [
   { to: '/execute', label: '执行点检', icon: CheckSquare },
   { to: '/review', label: '主管复核', icon: FileSpreadsheet },
   { to: '/history', label: '历史查询', icon: Search },
+  { to: '/handover', label: '交接班记录', icon: ArrowRightLeft },
   { to: '/maintenance', label: '设备保养', icon: Wrench },
   { to: '/stats', label: '统计分析', icon: BarChart3 },
   { to: '/config', label: '计划配置', icon: Settings },

@@ -281,6 +281,64 @@ export const MAINTENANCE_STATUS_COLORS: Record<MaintenanceReminderStatus, string
   COMPLETED: 'bg-green-100 text-green-700',
 }
 
+export interface HandoverOperationLog {
+  id: string
+  handoverRecordId: string
+  action: 'CREATE' | 'UPDATE' | 'CONFIRM' | 'UNDO_CONFIRM' | 'DELETE'
+  operator: string
+  timestamp: string
+  remark?: string
+  snapshot?: unknown
+}
+
+export interface HandoverRecord {
+  id: string
+  deviceId: string
+  shiftId: string
+  handoverDate: string
+  equipmentStatus: string
+  remainingIssues: string
+  handoverPerson: string
+  takeoverPerson: string
+  isConfirmed: boolean
+  confirmedBy?: string
+  confirmedAt?: string
+  operationLogs: HandoverOperationLog[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface HandoverImportLog {
+  id: string
+  importedAt: string
+  importedBy: string
+  totalRows: number
+  successCount: number
+  skipCount: number
+  details: {
+    row: number
+    deviceCode?: string
+    deviceName?: string
+    shiftName?: string
+    handoverDate?: string
+    action: 'IMPORTED' | 'SKIPPED'
+    reason: string
+  }[]
+}
+
+export interface HandoverImportResult {
+  log: HandoverImportLog
+  imported: HandoverRecord[]
+}
+
+export const HANDOVER_ACTION_LABELS: Record<HandoverOperationLog['action'], string> = {
+  CREATE: '创建',
+  UPDATE: '更新',
+  CONFIRM: '确认',
+  UNDO_CONFIRM: '撤销确认',
+  DELETE: '删除',
+}
+
 export const STATUS_TRANSITIONS: Record<InspectionStatus, InspectionStatus[]> = {
   DRAFT: ['SUBMITTED'],
   SUBMITTED: ['PENDING_REVIEW', 'COMPLETED', 'DRAFT'],
@@ -352,6 +410,14 @@ export const ERROR_CODES = {
   BACKUP_NOT_FOUND: 'BACKUP_NOT_FOUND',
   BACKUP_CORRUPTED: 'BACKUP_CORRUPTED',
   BACKUP_RESTORE_FAILED: 'BACKUP_RESTORE_FAILED',
+  DUPLICATE_MAINTENANCE_REMINDER: 'DUPLICATE_MAINTENANCE_REMINDER',
+  MAINTENANCE_REMINDER_NOT_FOUND: 'MAINTENANCE_REMINDER_NOT_FOUND',
+  MAINTENANCE_REMINDER_ALREADY_COMPLETED: 'MAINTENANCE_REMINDER_ALREADY_COMPLETED',
+  MAINTENANCE_REMINDER_NOT_COMPLETED: 'MAINTENANCE_REMINDER_NOT_COMPLETED',
+  DUPLICATE_HANDOVER_RECORD: 'DUPLICATE_HANDOVER_RECORD',
+  HANDOVER_RECORD_NOT_FOUND: 'HANDOVER_RECORD_NOT_FOUND',
+  HANDOVER_RECORD_ALREADY_CONFIRMED: 'HANDOVER_RECORD_ALREADY_CONFIRMED',
+  HANDOVER_RECORD_NOT_CONFIRMED: 'HANDOVER_RECORD_NOT_CONFIRMED',
 } as const
 
 export type BackupType = 'manual' | 'auto' | 'snapshot'

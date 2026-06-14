@@ -9,6 +9,7 @@ import ConfigPage from '@/pages/ConfigPage'
 import StatsPage from '@/pages/StatsPage'
 import BackupPage from '@/pages/BackupPage'
 import MaintenancePage from '@/pages/MaintenancePage'
+import HandoverPage from '@/pages/HandoverPage'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
           <Route path="/execute" element={<ExecuteInspection />} />
           <Route path="/review" element={<ReviewPage />} />
           <Route path="/history" element={<HistoryPage />} />
+          <Route path="/handover" element={<HandoverPage />} />
           <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/config" element={<ConfigPage />} />

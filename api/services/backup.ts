@@ -411,6 +411,8 @@ export function restoreBackup(
     backupConfig: existing.backupConfig,
     maintenanceReminders: backupData.maintenanceReminders || existing.maintenanceReminders || [],
     maintenanceImportLogs: backupData.maintenanceImportLogs || existing.maintenanceImportLogs || [],
+    handoverRecords: (backupData as Partial<Database>).handoverRecords || existing.handoverRecords || [],
+    handoverImportLogs: (backupData as Partial<Database>).handoverImportLogs || existing.handoverImportLogs || [],
   }
 
   result.restored.shifts = restoredData.shifts.length

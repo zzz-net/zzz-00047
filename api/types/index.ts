@@ -293,6 +293,58 @@ export interface Database {
   backupConfig?: BackupConfig
   maintenanceReminders: MaintenanceReminder[]
   maintenanceImportLogs: MaintenanceImportLog[]
+  handoverRecords: HandoverRecord[]
+  handoverImportLogs: HandoverImportLog[]
+}
+
+export interface HandoverOperationLog {
+  id: string
+  handoverRecordId: string
+  action: 'CREATE' | 'UPDATE' | 'CONFIRM' | 'UNDO_CONFIRM' | 'DELETE'
+  operator: string
+  timestamp: string
+  remark?: string
+  snapshot?: unknown
+}
+
+export interface HandoverRecord {
+  id: string
+  deviceId: string
+  shiftId: string
+  handoverDate: string
+  equipmentStatus: string
+  remainingIssues: string
+  handoverPerson: string
+  takeoverPerson: string
+  isConfirmed: boolean
+  confirmedBy?: string
+  confirmedAt?: string
+  operationLogs: HandoverOperationLog[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface HandoverImportLog {
+  id: string
+  importedAt: string
+  importedBy: string
+  totalRows: number
+  successCount: number
+  skipCount: number
+  details: {
+    row: number
+    deviceCode?: string
+    deviceName?: string
+    shiftName?: string
+    handoverDate?: string
+    action: 'IMPORTED' | 'SKIPPED'
+    reason: string
+  }[]
+}
+
+export interface HandoverImportResult {
+  log: HandoverImportLog
+  imported: HandoverRecord[]
 }
 
 export const ERROR_CODES = {
@@ -313,6 +365,10 @@ export const ERROR_CODES = {
   MAINTENANCE_REMINDER_NOT_FOUND: 'MAINTENANCE_REMINDER_NOT_FOUND',
   MAINTENANCE_REMINDER_ALREADY_COMPLETED: 'MAINTENANCE_REMINDER_ALREADY_COMPLETED',
   MAINTENANCE_REMINDER_NOT_COMPLETED: 'MAINTENANCE_REMINDER_NOT_COMPLETED',
+  DUPLICATE_HANDOVER_RECORD: 'DUPLICATE_HANDOVER_RECORD',
+  HANDOVER_RECORD_NOT_FOUND: 'HANDOVER_RECORD_NOT_FOUND',
+  HANDOVER_RECORD_ALREADY_CONFIRMED: 'HANDOVER_RECORD_ALREADY_CONFIRMED',
+  HANDOVER_RECORD_NOT_CONFIRMED: 'HANDOVER_RECORD_NOT_CONFIRMED',
 } as const
 
 export type BackupType = 'manual' | 'auto' | 'snapshot'
