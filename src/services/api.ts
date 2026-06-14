@@ -11,6 +11,8 @@ import type {
   ConfigImportPrecheck,
   ConfigImportOptions,
   ConfigImportResult,
+  StatsSummary,
+  StatsLog,
 } from '@/types'
 
 const API_BASE = '/api'
@@ -137,4 +139,36 @@ export const configApi = {
       method: 'POST',
       body: JSON.stringify({ payload, options }),
     }),
+}
+
+export interface StatsFilters {
+  dateFrom?: string
+  dateTo?: string
+  user?: string
+}
+
+export const statsApi = {
+  summary: (filters?: StatsFilters) => {
+    const params = new URLSearchParams()
+    if (filters) {
+      Object.entries(filters).forEach(([k, v]) => {
+        if (v) params.set(k, v)
+      })
+    }
+    const qs = params.toString()
+    return request<StatsSummary>(`/stats/summary${qs ? `?${qs}` : ''}`)
+  },
+  log: (data: { user: string; action: 'VIEW' | 'FILTER' | 'EXPORT'; filters?: { dateFrom?: string; dateTo?: string } }) =>
+    request<void>('/stats/log', { method: 'POST', body: JSON.stringify(data) }),
+  logs: () => request<StatsLog[]>('/stats/logs'),
+  csvUrl: (filters?: StatsFilters) => {
+    const params = new URLSearchParams()
+    if (filters) {
+      Object.entries(filters).forEach(([k, v]) => {
+        if (v) params.set(k, v)
+      })
+    }
+    const qs = params.toString()
+    return `${API_BASE}/stats/csv${qs ? `?${qs}` : ''}`
+  },
 }

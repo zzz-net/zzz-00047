@@ -128,6 +128,54 @@ export type UndoResult = {
   message: string
 }
 
+export interface StatsLog {
+  id: string
+  user: string
+  action: 'VIEW' | 'FILTER' | 'EXPORT'
+  timestamp: string
+  filters?: {
+    dateFrom?: string
+    dateTo?: string
+  }
+}
+
+export interface DeviceCompletionRate {
+  deviceId: string
+  deviceName: string
+  total: number
+  closed: number
+  rate: number
+}
+
+export interface ShiftAnomalyRate {
+  shiftId: string
+  shiftName: string
+  shiftType: ShiftType
+  total: number
+  anomaly: number
+  rate: number
+}
+
+export interface SeverityCount {
+  severity: 'LOW' | 'MEDIUM' | 'HIGH'
+  count: number
+}
+
+export interface AnomalyTrendItem {
+  date: string
+  count: number
+}
+
+export interface StatsSummary {
+  deviceCompletionRates: DeviceCompletionRate[]
+  shiftAnomalyRates: ShiftAnomalyRate[]
+  severityCounts: SeverityCount[]
+  anomalyTrend: AnomalyTrendItem[]
+  totalOrders: number
+  totalAnomalies: number
+  userRole: 'supervisor' | 'operator'
+}
+
 export const SHIFT_TYPE_LABELS: Record<ShiftType, string> = {
   MORNING: '早班',
   AFTERNOON: '中班',

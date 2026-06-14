@@ -6,6 +6,7 @@ import ExecuteInspection from '@/pages/ExecuteInspection'
 import ReviewPage from '@/pages/ReviewPage'
 import HistoryPage from '@/pages/HistoryPage'
 import ConfigPage from '@/pages/ConfigPage'
+import StatsPage from '@/pages/StatsPage'
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/execute" element={<ExecuteInspection />} />
           <Route path="/review" element={<ReviewPage />} />
           <Route path="/history" element={<HistoryPage />} />
+          <Route path="/stats" element={<StatsPage />} />
           <Route path="/config" element={<ConfigPage />} />
         </Routes>
       </Layout>

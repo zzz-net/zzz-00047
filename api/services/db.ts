@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import type { Database, Device, Shift, CheckItem, InspectionPlan, InspectionOrder } from '../types/index.js'
+import type { Database, Device, Shift, CheckItem, InspectionPlan, InspectionOrder, StatsLog } from '../types/index.js'
 import { getInitialData, createSampleEvidenceFiles, SAMPLE_EVIDENCE_FILENAME } from './seed.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -44,6 +44,10 @@ function loadDatabase(): Database {
 
 function migrateDatabase(db: Database): Database {
   let changed = false
+  if (!db.statsLogs) {
+    db.statsLogs = []
+    changed = true
+  }
   for (const order of db.inspectionOrders) {
     if (order.id === 'ORD_SAMPLE_002') {
       for (const a of order.anomalies) {
@@ -137,6 +141,20 @@ export const db = {
   getDataDir(): string {
     ensureDirs()
     return DATA_DIR
+  },
+  getStatsLogs(): StatsLog[] {
+    return this.getData().statsLogs || []
+  },
+  saveStatsLogs(logs: StatsLog[]): void {
+    const data = this.getData()
+    data.statsLogs = logs
+    this.save(data)
+  },
+  addStatsLog(log: StatsLog): void {
+    const data = this.getData()
+    if (!data.statsLogs) data.statsLogs = []
+    data.statsLogs.push(log)
+    this.save(data)
   },
 }
 

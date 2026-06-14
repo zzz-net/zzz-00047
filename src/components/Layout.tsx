@@ -9,6 +9,7 @@ import {
   User,
   Bell,
   X,
+  BarChart3,
 } from 'lucide-react'
 import { useAppStore } from '@/store/appStore'
 import { useEffect, useState } from 'react'
@@ -19,6 +20,7 @@ const navItems = [
   { to: '/execute', label: '执行点检', icon: CheckSquare },
   { to: '/review', label: '主管复核', icon: FileSpreadsheet },
   { to: '/history', label: '历史查询', icon: Search },
+  { to: '/stats', label: '统计分析', icon: BarChart3 },
   { to: '/config', label: '计划配置', icon: Settings },
 ]
 

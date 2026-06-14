@@ -121,12 +121,60 @@ export interface ApiResponse<T = unknown> {
   error?: AppError
 }
 
+export interface StatsLog {
+  id: string
+  user: string
+  action: 'VIEW' | 'FILTER' | 'EXPORT'
+  timestamp: string
+  filters?: {
+    dateFrom?: string
+    dateTo?: string
+  }
+}
+
+export interface DeviceCompletionRate {
+  deviceId: string
+  deviceName: string
+  total: number
+  closed: number
+  rate: number
+}
+
+export interface ShiftAnomalyRate {
+  shiftId: string
+  shiftName: string
+  shiftType: ShiftType
+  total: number
+  anomaly: number
+  rate: number
+}
+
+export interface SeverityCount {
+  severity: 'LOW' | 'MEDIUM' | 'HIGH'
+  count: number
+}
+
+export interface AnomalyTrendItem {
+  date: string
+  count: number
+}
+
+export interface StatsSummary {
+  deviceCompletionRates: DeviceCompletionRate[]
+  shiftAnomalyRates: ShiftAnomalyRate[]
+  severityCounts: SeverityCount[]
+  anomalyTrend: AnomalyTrendItem[]
+  totalOrders: number
+  totalAnomalies: number
+}
+
 export interface Database {
   devices: Device[]
   shifts: Shift[]
   checkItems: CheckItem[]
   inspectionPlans: InspectionPlan[]
   inspectionOrders: InspectionOrder[]
+  statsLogs: StatsLog[]
 }
 
 export const STATUS_TRANSITIONS: Record<InspectionStatus, InspectionStatus[]> = {
