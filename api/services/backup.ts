@@ -375,7 +375,6 @@ export function restoreBackup(
 
   const individualOverrides = options.individualOverrides || {}
   const existingDeviceByCode = new Map(existing.devices.map((d) => [d.code, d]))
-  const existingDeviceById = new Map(existing.devices.map((d) => [d.id, d]))
 
   const devicesFinal: Device[] = []
   for (const backupDev of backupData.devices) {
@@ -395,15 +394,11 @@ export function restoreBackup(
         }
         devicesFinal.push(merged)
         result.overwritten.devices++
-        existingDeviceById.delete(existingDev.id)
       }
     } else {
       devicesFinal.push({ ...backupDev, updatedAt: nowIso() })
       result.restored.devices++
     }
-  }
-  for (const remaining of existingDeviceById.values()) {
-    devicesFinal.push(remaining)
   }
 
   const restoredData: Database = {
@@ -421,10 +416,21 @@ export function restoreBackup(
   result.restored.inspectionPlans = restoredData.inspectionPlans.length
   result.restored.inspectionOrders = restoredData.inspectionOrders.length
 
-  // Atomic write: write to temp first, then rename
   const tmpFile = DATA_FILE + '.tmp'
-  fs.writeFileSync(tmpFile, JSON.stringify(restoredData, null, 2), 'utf-8')
-  fs.renameSync(tmpFile, DATA_FILE)
+  const fd = fs.openSync(tmpFile, 'w')
+  fs.writeFileSync(fd, JSON.stringify(restoredData, null, 2), 'utf-8')
+  fs.fsyncSync(fd)
+  fs.closeSync(fd)
+  try {
+    fs.copyFileSync(tmpFile, DATA_FILE)
+  } catch {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(restoredData, null, 2), 'utf-8')
+  }
+  try {
+    fs.unlinkSync(tmpFile)
+  } catch {
+    /* ignore */
+  }
 
   // Restore evidence directory - remove existing evidence then copy backup
   if (fs.existsSync(EVIDENCE_DIR)) {
